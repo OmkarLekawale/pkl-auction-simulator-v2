@@ -1,0 +1,1 @@
+# inputs : all the input required for generating the deceasion, which method to use

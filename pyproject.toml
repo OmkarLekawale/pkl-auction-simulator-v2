@@ -1,0 +1,19 @@
+[project]
+name = "auction-sim"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Omkar Lekawale", email = "omkarlekawale@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=3.0.5",
+]
+
+[project.scripts]
+auction-sim = "auction_sim:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
