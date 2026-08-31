@@ -57,106 +57,86 @@ class PlayerAuction:
         Conducts auction for a player.
         This class instance stores info needed for the current player's auction for all rounds
         (there will be multiple round of bidding for a player, one round is going through all the teams and giving choice to bid or pass)
-        teams -> list of instances of class Team
-        auction_ctx -> instance of class AuctionContext
+        this class will go through different phases of player auction, bidding, fbm, unsold etc.
     """
     teams : list[Team]                      
     player : Player
 
     current_price : int = field(init=False)
-    turn_sequence : list[int] = field(init=False)
-    turn_seq_idx_2_team_id : list[int] = field(init=False)
+    round_order : list[int] = field(init=False)
+    order_idx_to_team_id : list[int] = field(init=False) # can we do order_id_to_team instead?
 
     fbm_used : bool = field(default=False, init=False)
-    last_bidder_id : int | None = field(default=None, init=False) 
+    last_bidder_id : int | None = field(default=None, init=False) # do we need team id?, we can just keep there a team instead of id?
     phase : str = field(default=PHASE_NORMAL, init=False)
     bid_happened_in_round : bool = field(default=False, init=False) # I think we can remove this by checking if the current turn team = last bidder id, what about the case when there is no bid?
-    turn_seq_idx : int = field(default=0, init=False)
+    order_idx : int = field(default=0, init=False)
     
 
     def __post_init__(self):
         self.current_price = self.player.base_price
-        self.turn_sequence = list(range(len(self.teams)))
-        random.shuffle(self.turn_sequence)
+        self.round_order = list(range(len(self.teams)))
+        random.shuffle(self.round_order)
         for turn in range(len(self.teams)):
-            team_id = self.turn_seq_idx[turn] 
-            self.turn_seq_idx_2_team_id[team_id] = turn
+            team_id = self.order_idx[turn] 
+            self.order_idx_to_team_id[team_id] = turn
 
+    def player_auction_ends(self):
+        if self.phase is not PHASE_DONE:
+            raise ValueError("phase is not PHASE_DONE")   
+
+    def next_phase(self):
+        if self.phase == PHASE_NORMAL:
+            if self.last_bidder is None:
+                self.phase = PHASE_DONE
+                self.player_auction_ends()
+            else:
+                self.phase = PHASE_FBM_ORIG
+                self.order_idx = self.turn_index_of_team_id(self.player.original_team)        
+        else:
+            raise ValueError()
+
+    def should_skip_team(self):
+        # prevent out of bound
+        if self.order_idx >= len(self.round_order): return False
+
+        # already bid
+        if (self.ctx.last_bidder is not None) and self.order_idx == self.turn_index_of_team_id(self.ctx.last_bidder): return True # should i remove the turn index of team, instead it should be team only
+        else: return False
+
+    def progress(self):
+        # move to next phase or next order_idx 
+
+        # move to the next team
+        self.order_idx += 1
+
+        # skip the teams if they can't bid. No! let them bid with pass! This will let them know they have to preserve money for bidding!
+        while self.should_skip_team():
+            self.order_idx += 1
+
+        # normal case: still within the round
+        if self.order_idx < len(self.round_order):
+            return
+
+        # End of round: 
+        if self.bid_happened_in_round:  
+            # if bid happened start new round
+            self.start_new_round()
+        else:
+            # If no one bid in this round -> next phase, unsold or fbm original
+            self.next_phase()
 
     def start_new_round(self):
-        self.turn_seq_idx = -1
+        self.order_idx = -1
         self.bid_happened_in_round = False
-        random.shuffle(self.turn_sequence)
+        random.shuffle(self.round_order)
         for turn in range(len(self.teams)):
-            self.turn_seq_idx_2_team_id[self.turn_sequence[turn]] = turn
-        self.progress()
+            self.order_idx_to_team_id[self.round_order[turn]] = turn
+        self.progress() # first team might be the last bidder we want to skip it, so order_idx is -1
 
     def current_team_id(self):
-        return self.turn_sequence[self.turn_seq_idx]
+        return self.round_order[self.order_idx]
 
     def current_team(self):
         return self.teams[self.current_team_id()]
 
-    def check(self):
-        # weather to move to next iterator
-        if self.turn_seq_idx >= len(self.turn_sequence): return False
-        team = self.current_team()
-        price = self.ctx.current_price
-        if (self.ctx.last_bidder is not None) and self.turn_seq_idx == self.turn_index_of_team_id(self.ctx.last_bidder): return True
-        elif self.current_team().total_buys >= MAX_TEAM_SIZE: return True
-        elif team.remaining_purse < price + BID_INCREMENT : return True
-        else: return False
-
-    def next_phase(self):
-        curr_phase = self.phase
-        if self.last_bidder is None:
-            self.finalize_unsold()
-        else:
-            self.phase = PHASE_FBM_ORIG
-            self.turn_seq_idx = self.turn_index_of_team_id(self.player.original_team)
-
-    def progress(self):
-        """
-            move to next phase or next turn_seq_idx 
-        """
-        player_orignal_team_id = self.player.original_team
-        # move to the next team
-        self.turn_seq_idx += 1
-
-        # skip the teams if they can't bid. No! let them bid with pass! This will let them know they have to preserve money for bidding!
-
-        while self.check():
-            self.turn_seq_idx += 1
-
-        
-        # normal case: still within the round
-        if self.turn_seq_idx < len(self.turn_sequence):
-            return
-
-        # End of round: 
-        # If no one bid in this round -> if final bidder is None then unsold player, if final bidder is a team then move to PHASE_FBM_ORIG
-        # if bid happened start new round
-        if self.bid_happened_in_round: 
-            self.start_new_round()
-        else:
-            self.next_phase()
-
-    
-    def finalize_unsold(self):
-        player = self.ctx.player
-        self.ctx.players_left_by_role[player.role] -= 1
-        self.phase = PHASE_DONE 
-
-
-
-
-
-
-
-
-
-if __name__ == "__main__":
-    team = Team(team_id=10, name="Puneri Paltan") 
-    player = Player(name="Omkar", role="Right Corner",  index=0, attack = 50, defense = 100, base_price = 10, original_team = team)
-    print(player)
-    print(team)
