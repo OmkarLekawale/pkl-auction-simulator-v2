@@ -2,8 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import random
 
-from src.auction_sim.core.constants import MAX_PURSE, MAX_FBM, ROLE_LIST, BID_INCREMENT, MAX_TEAM_SIZE
-from src.auction_sim.core.constants import PHASE_NORMAL, PHASE_FBM_ORIG, PHASE_DONE
+from auction_sim.core.constants import MAX_PURSE, MAX_FBM, ROLE_LIST, BID_INCREMENT, MAX_TEAM_SIZE
+from auction_sim.core.constants import PHASE_NORMAL, PHASE_FBM_ORIG, PHASE_DONE
 
 @dataclass(kw_only = True, frozen=True)
 class Player:

@@ -1,0 +1,34 @@
+ROLE_LIST = ["LR", "RR", "LC", "LCov", "RC", "RCov"]
+DEFENSIVE_ROLE = ['RC', 'LC', 'LCov', 'RCov']
+DEF_SLOTS = ['LC', 'LCov', 'RC', 'RCov']
+OFFENSIVE_ROLE = ['LR', 'RR']
+
+LEFT_DEFENSE = ['LC', 'LCov']
+RIGHT_DEFENSE = ['RC', 'RCov']
+
+ROLE_TO_IDX = {r: i for i, r in enumerate(ROLE_LIST)}
+ 
+ROLE_CAP = {r: 3 for r in ROLE_LIST}
+ROLE_MIN = {r: 3 for r in ROLE_LIST}
+ROLE_MIN["RR"], ROLE_MIN["LR"] = 2, 2
+ROLE_CAP["RR"], ROLE_CAP["LR"] = 4, 4
+MAX_TEAM_SIZE = 12
+
+
+PHASE_NORMAL = "normal"
+PHASE_FBM_ORIG = "fbm_orig"
+PHASE_FBM_WINNER = "fbm_winner"
+PHASE_FBM_REPLY = "fbm_reply"
+PHASE_PAY = "pay_current_price"
+PHASE_DONE = "done"
+
+
+NUM_ACTIONS = 7  # PASS, BID, FBM_USE, FBM_INCR_10, FBM_INCR_20, FBM_TAKE, PAY
+ACTION_LIST = ['ACTION_PASS', 'ACTION_BID', 'ACTION_FBM_USE', 'ACTION_FBM_INCR_10', 'ACTION_FBM_INCR_20', 'ACTION_FBM_TAKE', 'ACTION_PAY']
+ACTION_PASS = 0
+ACTION_BID = 1
+ACTION_FBM_USE = 2
+ACTION_FBM_INCR_10 = 3
+ACTION_FBM_INCR_20 = 4
+ACTION_FBM_TAKE = 5
+ACTION_PAY = 6

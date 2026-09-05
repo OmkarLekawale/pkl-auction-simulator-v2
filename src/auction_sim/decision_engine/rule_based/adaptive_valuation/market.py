@@ -1,5 +1,3 @@
-from .target_player_role_distribution import distribution
-
 ROLE_LIST = ["LR", "RR", "LC", "LCov", "RC", "RCov"]
 OFFENSIVE_ROLE = ['LR', 'RR']
 LEFT_DEFENSE = ['LC', 'LCov']
