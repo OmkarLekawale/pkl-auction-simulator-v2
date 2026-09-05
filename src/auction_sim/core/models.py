@@ -18,7 +18,7 @@ class Player:
     base_price : int
     original_team : Team
 
-@dataclass(kw_only = True)
+@dataclass(kw_only = True, eq=False)
 class Team:
     team_id : int
     name : str
@@ -39,17 +39,6 @@ class Team:
         return self.remaining_purse >= price and self.fbm_left > 0 and self.total_buys < MAX_TEAM_SIZE
 
 
-@dataclass(kw_only = True)
-class AuctionContext: 
-    """
-        This class instance corresponds to each player class in bidding 
-    """
-    player : Player
-    current_price : int = field(init=False)
-    last_bidder_id : int | None = field(default=None, init=False)
-
-    def __post_init__(self):
-        self.current_price = self.player.base_price 
 
 @dataclass(kw_only=True)
 class PlayerAuction:
