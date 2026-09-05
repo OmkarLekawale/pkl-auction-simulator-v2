@@ -59,27 +59,26 @@ class PlayerAuction:
         (there will be multiple round of bidding for a player, one round is going through all the teams and giving choice to bid or pass)
         this class will go through different phases of player auction, bidding, fbm, unsold etc.
     """
-    teams : list[Team]                      
+    round_order : list[Team]                      
     player : Player
 
     current_price : int = field(init=False)
-    round_order : list[int] = field(init=False)
-    order_idx_to_team_id : list[int] = field(init=False) # can we do order_id_to_team instead?
+    order_idx_to_team : list[Team] = field(init=False) 
 
     fbm_used : bool = field(default=False, init=False)
-    last_bidder_id : int | None = field(default=None, init=False) # do we need team id?, we can just keep there a team instead of id?
+    last_bidder : Team | None = field(default=None, init=False) 
     phase : str = field(default=PHASE_NORMAL, init=False)
-    bid_happened_in_round : bool = field(default=False, init=False) # I think we can remove this by checking if the current turn team = last bidder id, what about the case when there is no bid?
+    bid_happened_in_round : bool = field(default=False, init=False) 
     order_idx : int = field(default=0, init=False)
+    team_to_order_idx : dict[Team,int] = field(default_factory=dict[Team, int], init=False)
     
 
     def __post_init__(self):
         self.current_price = self.player.base_price
-        self.round_order = list(range(len(self.teams)))
         random.shuffle(self.round_order)
-        for turn in range(len(self.teams)):
-            team_id = self.order_idx[turn] 
-            self.order_idx_to_team_id[team_id] = turn
+
+        for turn, team in enumerate(self.round_order):
+            self.team_to_order_idx[team] = turn
 
     def player_auction_ends(self):
         if self.phase is not PHASE_DONE:
@@ -92,7 +91,7 @@ class PlayerAuction:
                 self.player_auction_ends()
             else:
                 self.phase = PHASE_FBM_ORIG
-                self.order_idx = self.turn_index_of_team_id(self.player.original_team)        
+                self.order_idx = self.team_to_order_idx[self.player.original_team]        
         else:
             raise ValueError()
 
@@ -101,7 +100,7 @@ class PlayerAuction:
         if self.order_idx >= len(self.round_order): return False
 
         # already bid
-        if (self.ctx.last_bidder is not None) and self.order_idx == self.turn_index_of_team_id(self.ctx.last_bidder): return True # should i remove the turn index of team, instead it should be team only
+        if (self.last_bidder is not None) and self.round_order[self.order_idx] == self.last_bidder: return True 
         else: return False
 
     def progress(self):
@@ -111,6 +110,7 @@ class PlayerAuction:
         self.order_idx += 1
 
         # skip the teams if they can't bid. No! let them bid with pass! This will let them know they have to preserve money for bidding!
+        # skip when last bidders was the current team
         while self.should_skip_team():
             self.order_idx += 1
 
@@ -130,13 +130,12 @@ class PlayerAuction:
         self.order_idx = -1
         self.bid_happened_in_round = False
         random.shuffle(self.round_order)
-        for turn in range(len(self.teams)):
-            self.order_idx_to_team_id[self.round_order[turn]] = turn
+
+        for turn, team in enumerate(self.round_order):
+            self.team_to_order_idx[team] = turn
+
         self.progress() # first team might be the last bidder we want to skip it, so order_idx is -1
 
-    def current_team_id(self):
-        return self.round_order[self.order_idx]
 
-    def current_team(self):
-        return self.teams[self.current_team_id()]
-
+if __name__ == "__main__":
+    pass
