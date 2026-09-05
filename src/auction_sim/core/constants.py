@@ -1,7 +1,7 @@
 # Auction constants
 MAX_PURSE = 500
 BID_INCREMENT = 1
-MAX_FBM = 4
+MAX_FBM = 3
 MAX_TEAM_SIZE = 12
 
 ROLE_LIST = ["LR", "RR", "LC", "LCov", "RC", "RCov"]

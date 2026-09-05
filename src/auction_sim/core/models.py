@@ -2,8 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import random
 
-from .constants import MAX_PURSE, MAX_FBM, ROLE_LIST, BID_INCREMENT, MAX_TEAM_SIZE
-from .constants import PHASE_NORMAL, PHASE_FBM_ORIG, PHASE_DONE
+from src.auction_sim.core.constants import MAX_PURSE, MAX_FBM, ROLE_LIST, BID_INCREMENT, MAX_TEAM_SIZE
+from src.auction_sim.core.constants import PHASE_NORMAL, PHASE_FBM_ORIG, PHASE_DONE
 
 @dataclass(kw_only = True, frozen=True)
 class Player:
@@ -18,7 +18,7 @@ class Player:
     base_price : int
     original_team : Team
 
-@dataclass(kw_only = True)
+@dataclass(kw_only = True, eq=False)
 class Team:
     team_id : int
     name : str
@@ -39,124 +39,92 @@ class Team:
         return self.remaining_purse >= price and self.fbm_left > 0 and self.total_buys < MAX_TEAM_SIZE
 
 
-# @dataclass(kw_only = True)
-# class AuctionContext: 
-#     """
-#         This class instance corresponds to each player class in bidding 
-#     """
-#     player : Player
-#     current_price : int = field(init=False)
-#     last_bidder_id : int | None = field(default=None, init=False)
 
-#     def __post_init__(self):
-#         self.current_price = self.player.base_price 
+@dataclass(kw_only=True)
+class PlayerAuction:
+    """
+        Conducts auction for a player.
+        This class instance stores info needed for the current player's auction for all rounds
+        (there will be multiple round of bidding for a player, one round is going through all the teams and giving choice to bid or pass)
+        this class will go through different phases of player auction, bidding, fbm, unsold etc.
+    """
+    round_order : list[Team]                      
+    player : Player
 
-# @dataclass(kw_only=True)
-# class PlayerAuction:
-#     """
-#         Conducts auction for a player.
-#         This class instance stores info needed for the current player's auction for all rounds
-#         (there will be multiple round of bidding for a player, one round is going through all the teams and giving choice to bid or pass)
-#         teams -> list of instances of class Team
-#         auction_ctx -> instance of class AuctionContext
-#     """
-#     teams : list[Team]                      
-#     player : Player
+    current_price : int = field(init=False)
+    order_idx_to_team : list[Team] = field(init=False) 
 
-#     current_price : int = field(init=False)
-#     turn_sequence : list[int] = field(init=False)
-#     turn_seq_idx_2_team_id : list[int] = field(init=False)
-
-#     fbm_used : bool = field(default=False, init=False)
-#     last_bidder_id : int | None = field(default=None, init=False) 
-#     phase : str = field(default=PHASE_NORMAL, init=False)
-#     bid_happened_in_round : bool = field(default=False, init=False) # I think we can remove this by checking if the current turn team = last bidder id, what about the case when there is no bid?
-#     turn_seq_idx : int = field(default=0, init=False)
+    fbm_used : bool = field(default=False, init=False)
+    last_bidder : Team | None = field(default=None, init=False) 
+    phase : str = field(default=PHASE_NORMAL, init=False)
+    bid_happened_in_round : bool = field(default=False, init=False) 
+    order_idx : int = field(default=0, init=False)
+    team_to_order_idx : dict[Team,int] = field(default_factory=dict[Team, int], init=False)
     
 
-#     def __post_init__(self):
-#         self.current_price = self.player.base_price
-#         self.turn_sequence = list(range(len(self.teams)))
-#         random.shuffle(self.turn_sequence)
-#         for turn in range(len(self.teams)):
-#             team_id = self.turn_seq_idx[turn] 
-#             self.turn_seq_idx_2_team_id[team_id] = turn
+    def __post_init__(self):
+        self.current_price = self.player.base_price
+        random.shuffle(self.round_order)
 
+        for turn, team in enumerate(self.round_order):
+            self.team_to_order_idx[team] = turn
 
-#     def start_new_round(self):
-#         self.turn_seq_idx = -1
-#         self.bid_happened_in_round = False
-#         random.shuffle(self.turn_sequence)
-#         for turn in range(len(self.teams)):
-#             self.turn_seq_idx_2_team_id[self.turn_sequence[turn]] = turn
-#         self.progress()
+    def player_auction_ends(self):
+        if self.phase is not PHASE_DONE:
+            raise ValueError("phase is not PHASE_DONE")   
 
-#     def current_team_id(self):
-#         return self.turn_sequence[self.turn_seq_idx]
+    def next_phase(self):
+        if self.phase == PHASE_NORMAL:
+            if self.last_bidder is None:
+                self.phase = PHASE_DONE
+                self.player_auction_ends()
+            else:
+                self.phase = PHASE_FBM_ORIG
+                self.order_idx = self.team_to_order_idx[self.player.original_team]        
+        else:
+            raise ValueError()
 
-#     def current_team(self):
-#         return self.teams[self.current_team_id()]
+    def should_skip_team(self):
+        # prevent out of bound
+        if self.order_idx >= len(self.round_order): return False
 
-# #     def check(self):
-# #         # weather to move to next iterator
-# #         if self.turn_seq_idx >= len(self.turn_sequence): return False
-# #         team = self.current_team()
-# #         price = self.ctx.current_price
-# #         if (self.ctx.last_bidder is not None) and self.turn_seq_idx == self.turn_index_of_team_id(self.ctx.last_bidder): return True
-# #         elif self.current_team().total_buys >= MAX_TEAM_SIZE: return True
-# #         elif team.remaining_purse < price + BID_INCREMENT : return True
-# #         else: return False
+        # already bid
+        if (self.last_bidder is not None) and self.round_order[self.order_idx] == self.last_bidder: return True 
+        else: return False
 
-#     def next_phase(self):
-#         curr_phase = self.phase
-#         if self.last_bidder is None:
-#             self.finalize_unsold()
-#         else:
-#             self.phase = PHASE_FBM_ORIG
-#             self.turn_seq_idx = self.turn_index_of_team_id(self.player.original_team)
+    def progress(self):
+        # move to next phase or next order_idx 
 
-#     def progress(self):
-#         """
-#             move to next phase or next turn_seq_idx 
-#         """
-#         player_orignal_team_id = self.player.original_team
-#         # move to the next team
-#         self.turn_seq_idx += 1
+        # move to the next team
+        self.order_idx += 1
 
-#         # skip the teams if they can't bid. No! let them bid with pass! This will let them know they have to preserve money for bidding!
+        # skip the teams if they can't bid. No! let them bid with pass! This will let them know they have to preserve money for bidding!
+        # skip when last bidders was the current team
+        while self.should_skip_team():
+            self.order_idx += 1
 
-#         while self.check():
-#             self.turn_seq_idx += 1
+        # normal case: still within the round
+        if self.order_idx < len(self.round_order):
+            return
 
-        
-#         # normal case: still within the round
-#         if self.turn_seq_idx < len(self.turn_sequence):
-#             return
+        # End of round: 
+        if self.bid_happened_in_round:  
+            # if bid happened start new round
+            self.start_new_round()
+        else:
+            # If no one bid in this round -> next phase, unsold or fbm original
+            self.next_phase()
 
-#         # End of round: 
-#         # If no one bid in this round -> if final bidder is None then unsold player, if final bidder is a team then move to PHASE_FBM_ORIG
-#         # if bid happened start new round
-#         if self.bid_happened_in_round: 
-#             self.start_new_round()
-#         else:
-#             self.next_phase()
+    def start_new_round(self):
+        self.order_idx = -1
+        self.bid_happened_in_round = False
+        random.shuffle(self.round_order)
 
-    
-# #     def finalize_unsold(self):
-# #         player = self.ctx.player
-# #         self.ctx.players_left_by_role[player.role] -= 1
-# #         self.phase = PHASE_DONE 
+        for turn, team in enumerate(self.round_order):
+            self.team_to_order_idx[team] = turn
 
-
-
-
-
-
-
+        self.progress() # first team might be the last bidder we want to skip it, so order_idx is -1
 
 
 if __name__ == "__main__":
-    team = Team(team_id=10, name="Puneri Paltan") 
-    player = Player(name="Omkar", role="Right Corner",  index=0, attack = 50, defense = 100, base_price = 10, original_team = team)
-    print(player)
-    print(team)
+    pass
