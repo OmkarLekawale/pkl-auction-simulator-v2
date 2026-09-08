@@ -48,7 +48,7 @@ class HeuresticPolicy:
     def __post_init__(self):
         self.k1, self.k2 = random.uniform(K1[0], K1[1]), random.uniform(K2[0], K2[1])
 
-    def predict(self, *args, _obs = None | np.ndarray, action_masks : list[bool] = None, deterministic=False, player_auction : PlayerAuction, **kwargs) -> tuple[int, None]:
+    def predict(self, *args, _obs : None | np.ndarray = None, action_masks : list[bool] = None, deterministic=False, player_auction : PlayerAuction, **kwargs) -> tuple[int, None]:
 
         if self.current_player is not self.player_auction.player:
             self.current_player = self.player_auction.player
