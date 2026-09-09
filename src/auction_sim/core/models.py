@@ -4,7 +4,7 @@ import random
 
 from auction_sim.core.constants import MAX_PURSE, MAX_FBM, ROLE_LIST, BID_INCREMENT, MAX_TEAM_SIZE
 from auction_sim.constants import PHASE_NORMAL, PHASE_FBM_ORIG, PHASE_FBM_WINNER, PHASE_FBM_REPLY, PHASE_PAY, PHASE_DONE
-from auction_sim.constants import ACTION_BID, ACTION_FBM_INCR_10, ACTION_FBM_INCR_20, ACTION_FBM_TAKE, ACTION_FBM_USE, ACTION_PASS, ACTION_PAY
+from auction_sim.constants import ACTION_BID, ACTION_FBM_INCR_10, ACTION_FBM_INCR_20, ACTION_FBM_TAKE, ACTION_FBM_USE, ACTION_PASS, ACTION_PAY, NUM_ACTIONS
 
 
 @dataclass(kw_only = True, frozen=True)
@@ -54,7 +54,6 @@ class PlayerAuction:
     player : Player
 
     current_price : int = field(init=False)
-    order_idx_to_team : list[Team] = field(init=False) 
 
     fbm_used : bool = field(default=False, init=False)
     last_bidder : Team | None = field(default=None, init=False) 
@@ -81,10 +80,12 @@ class PlayerAuction:
                 # We can log this information
             else:
                 team = self.last_bidder
-                if team.can_bid(self.last_bidder - 1):
+                if team.can_bid(self.current_price - BID_INCREMENT):
                     team.players.append(self.player)
                     team.remaining_purse -= self.current_price
                     team.role_count[self.player.role] += 1
+
+                    print(f"player : {self.player.name} was sold to {self.last_bidder.name} for {self.current_price} LACS")
                 else:
                     raise ValueError("Player was sold to the team which cannot pay")
 
@@ -192,7 +193,7 @@ class PlayerAuction:
     def get_action_mask(self):
         team = self.round_order[self.order_idx]
         phase = self.phase
-        mask = [False] * 7
+        mask = [False] * NUM_ACTIONS
         mask[ACTION_PASS] = True
         if phase == PHASE_NORMAL:
             if team.can_bid(self.current_price):
@@ -214,6 +215,7 @@ class PlayerAuction:
                 mask[ACTION_PAY] = True
             else:
                 raise ValueError("team doesn't have enough money! How they won the auction?")
+        return mask
 
 if __name__ == "__main__":
     pass

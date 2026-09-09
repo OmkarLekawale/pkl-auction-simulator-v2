@@ -4,7 +4,7 @@
 
 import numpy as np
 
-from auction_sim.core.models import Team
+from auction_sim.core.models import Team, Player
 from auction_sim.decision_engine.rule_based.adaptive_valuation.engine import HeuresticPolicy
 
 
@@ -15,12 +15,14 @@ def get_rule_based_policy(
         user : Team,
         Teams : list[Team],
         policy_name : str,
-        total_players_by_role : dict[str,int]
+        total_players_by_role : dict[str,int],
+        Players : list[Player]
 ):
     if policy_name == "adaptive_valuation":
-        return HeuresticPolicy(user=user, Teams=Teams, players_left_by_role=total_players_by_role) 
+        return HeuresticPolicy(user=user, Teams=Teams, Players=Players,players_left_by_role=total_players_by_role) 
 
 def get_policy(
+        Players : list[Player],
         user : Team | None = None,
         Teams : list[Team] | None = None,
         policy_name : str = "adaptive_valuation",
@@ -34,4 +36,4 @@ def get_policy(
     if model_based:
         get_model_based_policy()
     else:
-        return get_rule_based_policy(user=user, Teams=Teams, policy_name=policy_name, total_players_by_role=players_by_role)
+        return get_rule_based_policy(user=user, Players=Players, Teams=Teams, policy_name=policy_name, total_players_by_role=total_players_by_role)
