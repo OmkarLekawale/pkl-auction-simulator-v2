@@ -34,6 +34,7 @@ for player in Players:
             player_auction.step(action=action)
 
     Teams.sort(key=lambda team : team.team_id)
+    break
 
 
 
