@@ -39,7 +39,7 @@ class HeuresticPolicy:
     Players : list[Player]   # total players
     players_left_by_role : dict[str, int] # this is not a deep copy
 
-    player_auction : PlayerAuction | None = field(default=None, init=False)
+
     current_player : Player | None = field(default=None, init=False)
     fair_price : None | int = field(default=None, init=False)
     k1 : float = field(init=False)
@@ -48,14 +48,15 @@ class HeuresticPolicy:
     def __post_init__(self):
         self.k1, self.k2 = random.uniform(K1[0], K1[1]), random.uniform(K2[0], K2[1])
 
-    def predict(self, *args, _obs = None | np.ndarray, action_masks : list[bool] = None, deterministic=False, player_auction : PlayerAuction, **kwargs) -> tuple[int, None]:
+    def predict(self, *args, _obs : None | np.ndarray = None, action_masks : list[bool] = None, deterministic=False, player_auction : PlayerAuction, **kwargs) -> tuple[int, None]:
 
-        if self.current_player is not self.player_auction.player:
-            self.current_player = self.player_auction.player
+        if self.current_player is not player_auction.player:
+            self.current_player = player_auction.player
             self.fair_price = self.get_fair_price()
+            print(f"team : {self.user.name}, fair price calculate : {self.fair_price} \n")
 
-        phase = self.player_auction.phase
-        current_price = self.player_auction.current_price
+        phase = player_auction.phase
+        current_price = player_auction.current_price
 
         if phase == PHASE_NORMAL:
             if self.fair_price >= 1 + current_price and action_masks[ACTION_BID]:
@@ -134,7 +135,16 @@ class HeuresticPolicy:
                 delta += d * (d + 1) * neg_wt // 2
         return delta
 
-
+    def compute_min_delta_to_targets(self, role_count, targets_for_k):
+        best = math.inf
+        best_dist = {}
+        for target in targets_for_k:
+            d = self.get_diff(target, role_count)
+            if d < best:
+                best_dist = target
+                best = d
+        # print(best, best_dist)
+        return best
 
     def role_requirement_by_target_method(self, role_count, targets_by_k):
 
